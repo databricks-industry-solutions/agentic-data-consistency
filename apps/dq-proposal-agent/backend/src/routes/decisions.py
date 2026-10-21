@@ -1,5 +1,6 @@
 """POST /api/proposals/{id}/decision — accept or deny a proposal.
-On accept, calls DBSQL Alerts v2 to create the alert.
+On accept, calls DBSQL Alerts v2 to create the alert (or update the existing
+one if the same check was approved before).
 """
 from __future__ import annotations
 
@@ -82,6 +83,8 @@ def decide(
             subscribers=subscribers,
             schedule_cron=cron,
         )
+        if created.reused:
+            print(f"[decide {p.id}] reused existing alert {created.alert_id} ({display_name})", flush=True)
         store.insert_acceptance(Acceptance(
             id=new_id(),
             proposal_id=p.id,
