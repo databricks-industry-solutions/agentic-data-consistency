@@ -1,0 +1,644 @@
+{
+  "datasets": [
+    {
+      "name": "findings_detail",
+      "displayName": "Findings Detail",
+      "queryLines": [
+        "SELECT\n",
+        "  f.id,\n",
+        "  f.invariant_type,\n",
+        "  f.target_table_fqn,\n",
+        "  f.violations,\n",
+        "  f.evaluated_at,\n",
+        "  f.resolved,\n",
+        "  p.status AS proposal_status,\n",
+        "  p.confidence AS proposal_confidence\n",
+        "FROM\n",
+        "  dq_finding f\n",
+        "    LEFT JOIN proposal p\n",
+        "      ON f.proposal_id = p.id\n",
+        "ORDER BY\n",
+        "  f.evaluated_at DESC"
+      ]
+    },
+    {
+      "name": "proposal",
+      "displayName": "Proposals",
+      "queryLines": [
+        "SELECT\n",
+        "  id,\n",
+        "  status,\n",
+        "  invariant_type,\n",
+        "  confidence,\n",
+        "  current_violation_count,\n",
+        "  created_at\n",
+        "FROM\n",
+        "  proposal"
+      ]
+    },
+    {
+      "name": "proposal_run",
+      "displayName": "Proposal Runs",
+      "queryLines": [
+        "SELECT\n",
+        "  id,\n",
+        "  status,\n",
+        "  started_at,\n",
+        "  completed_at\n",
+        "FROM\n",
+        "  proposal_run"
+      ]
+    },
+    {
+      "name": "dq_finding",
+      "displayName": "DQ Findings",
+      "queryLines": [
+        "SELECT\n",
+        "  id,\n",
+        "  proposal_id,\n",
+        "  invariant_type,\n",
+        "  target_table_fqn,\n",
+        "  violations,\n",
+        "  evaluated_at,\n",
+        "  resolved\n",
+        "FROM\n",
+        "  dq_finding"
+      ]
+    },
+    {
+      "name": "approved_proposal",
+      "displayName": "Approved Proposals",
+      "queryLines": [
+        "SELECT\n",
+        "  id,\n",
+        "  invariant_type,\n",
+        "  current_violation_count\n",
+        "FROM\n",
+        "  proposal\n",
+        "WHERE\n",
+        "  status = 'APPROVED'"
+      ]
+    },
+    {
+      "name": "latest_finding",
+      "displayName": "Latest Finding per Approved Proposal",
+      "queryLines": [
+        "SELECT\n",
+        "  f.proposal_id,\n",
+        "  f.target_table_fqn,\n",
+        "  f.violations,\n",
+        "  f.evaluated_at\n",
+        "FROM\n",
+        "  dq_finding f\n",
+        "    JOIN proposal p\n",
+        "      ON f.proposal_id = p.id\n",
+        "WHERE\n",
+        "  p.status = 'APPROVED'\n",
+        "QUALIFY\n",
+        "  ROW_NUMBER() OVER (PARTITION BY f.proposal_id ORDER BY f.evaluated_at DESC) = 1"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "1c1d2266",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "total_proposals",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "proposal",
+                  "fields": [
+                    {
+                      "name": "count(id)",
+                      "expression": "COUNT(`id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Proposals"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(id)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_violations",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "approved_proposal",
+                  "fields": [
+                    {
+                      "name": "sum(current_violation_count)",
+                      "expression": "SUM(`current_violation_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Violations",
+                "showDescription": true,
+                "description": "Current violations across approved checks"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(current_violation_count)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "avg_confidence",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "proposal",
+                  "fields": [
+                    {
+                      "name": "avg(confidence)",
+                      "expression": "AVG(`confidence`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Confidence"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(confidence)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "total_runs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "proposal_run",
+                  "fields": [
+                    {
+                      "name": "count(id)",
+                      "expression": "COUNT(`id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Total Runs"
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(id)",
+                  "rowNumber": 0
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "proposals_by_status",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "proposal",
+                  "fields": [
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    },
+                    {
+                      "name": "count(id)",
+                      "expression": "COUNT(`id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Proposals by Status"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "status",
+                  "displayName": "status",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "count(id)",
+                  "displayName": "id",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "status",
+                  "displayName": "status",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "proposals_by_type",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "proposal",
+                  "fields": [
+                    {
+                      "name": "invariant_type",
+                      "expression": "`invariant_type`"
+                    },
+                    {
+                      "name": "count(id)",
+                      "expression": "COUNT(`id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Proposals by Invariant Type"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "invariant_type",
+                  "displayName": "invariant_type",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "count(id)",
+                  "displayName": "id",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "invariant_type",
+                  "displayName": "invariant_type",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 3,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "violations_by_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "latest_finding",
+                  "fields": [
+                    {
+                      "name": "target_table_fqn",
+                      "expression": "`target_table_fqn`"
+                    },
+                    {
+                      "name": "sum(violations)",
+                      "expression": "SUM(`violations`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Violations by Target Table",
+                "showDescription": true,
+                "description": "Latest refresh of each approved check"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "target_table_fqn",
+                  "displayName": "target_table_fqn",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(violations)",
+                  "displayName": "violations",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "target_table_fqn",
+                  "displayName": "target_table_fqn",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "runs_over_time",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "proposal_run",
+                  "fields": [
+                    {
+                      "name": "monthly(started_at)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `started_at`)"
+                    },
+                    {
+                      "name": "count(id)",
+                      "expression": "COUNT(`id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Runs Over Time"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(started_at)",
+                  "displayName": "Month",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "count(id)",
+                  "displayName": "id",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 9,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "findings",
+      "displayName": "Findings",
+      "layout": [
+        {
+          "widget": {
+            "name": "findings_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "findings_detail",
+                  "fields": [
+                    {
+                      "name": "id",
+                      "expression": "`id`"
+                    },
+                    {
+                      "name": "invariant_type",
+                      "expression": "`invariant_type`"
+                    },
+                    {
+                      "name": "target_table_fqn",
+                      "expression": "`target_table_fqn`"
+                    },
+                    {
+                      "name": "violations",
+                      "expression": "`violations`"
+                    },
+                    {
+                      "name": "evaluated_at",
+                      "expression": "`evaluated_at`"
+                    },
+                    {
+                      "name": "resolved",
+                      "expression": "`resolved`"
+                    },
+                    {
+                      "name": "proposal_status",
+                      "expression": "`proposal_status`"
+                    },
+                    {
+                      "name": "proposal_confidence",
+                      "expression": "`proposal_confidence`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "DQ Findings Detail"
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "id"
+                  },
+                  {
+                    "fieldName": "invariant_type"
+                  },
+                  {
+                    "fieldName": "target_table_fqn"
+                  },
+                  {
+                    "fieldName": "violations"
+                  },
+                  {
+                    "fieldName": "evaluated_at"
+                  },
+                  {
+                    "fieldName": "resolved"
+                  },
+                  {
+                    "fieldName": "proposal_status"
+                  },
+                  {
+                    "fieldName": "proposal_confidence"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 10
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
