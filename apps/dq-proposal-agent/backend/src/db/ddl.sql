@@ -66,3 +66,20 @@ CREATE TABLE IF NOT EXISTS {catalog}.{schema}.acceptance (
 USING DELTA
 CLUSTER BY (proposal_id)
 COMMENT 'Linkage from accepted proposal to created alert / DQX rule.';
+
+CREATE TABLE IF NOT EXISTS {catalog}.{schema}.dq_finding (
+  id                       STRING NOT NULL,
+  proposal_id              STRING NOT NULL,
+  alert_id                 STRING,
+  invariant_type           STRING NOT NULL,
+  target_table_fqn         STRING NOT NULL,
+  target_columns_json      STRING,
+  evaluated_at             TIMESTAMP NOT NULL,
+  violations               BIGINT NOT NULL,
+  sample_ids_json          STRING,
+  source                   STRING NOT NULL,
+  resolved                 BOOLEAN
+)
+USING DELTA
+CLUSTER BY (proposal_id)
+COMMENT 'One row per evaluation of an approved check (agent refresh or alert run).';

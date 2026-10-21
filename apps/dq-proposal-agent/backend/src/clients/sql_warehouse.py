@@ -15,12 +15,14 @@ def sql_literal(value: str | None) -> str:
 
     Spark interprets backslash escapes inside single-quoted literals (`\\n` →
     newline, `\\t` → tab, `\\\\` → `\\`), so we must double backslashes BEFORE
-    doubling quotes — otherwise embedded JSON or anything containing `\\n`
-    silently corrupts on round-trip. Returns NULL (unquoted) for None.
+    escaping quotes — otherwise embedded JSON or anything containing `\\n`
+    silently corrupts on round-trip. Quotes are escaped as `\\'`: Spark reads
+    `'a''b'` as two adjacent literals and returns `ab`, dropping the quote.
+    Returns NULL (unquoted) for None.
     """
     if value is None:
         return "NULL"
-    return "'" + value.replace("\\", "\\\\").replace("'", "''") + "'"
+    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
 def _coerce(value: Any, type_name: str | None) -> Any:
