@@ -24,4 +24,20 @@ build/
 
 # Environment files
 .env
-.env.local 
+.env.local .env.*.local
+
+# Python tooling
+.venv/
+venv/
+.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
+.hatch/
+
+# Node / Vite
+node_modules/
+*.tsbuildinfo
+
+# Frontend build copied into the app source at deploy time
+apps/dq-proposal-agent/backend/static/

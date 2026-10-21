@@ -1,0 +1,63 @@
+%%{init: {"flowchart": {"curve": "basis", "padding": 16}, "themeVariables": {"fontSize": "14px"}}}%%
+flowchart TD
+    classDef user      fill:#eceff1,stroke:#455a64,color:#263238,stroke-width:1px
+    classDef app       fill:#e3f2fd,stroke:#1565c0,color:#0d47a1,stroke-width:1.5px
+    classDef discovery fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20,stroke-width:1.5px
+    classDef profile   fill:#fff8e1,stroke:#f9a825,color:#5d4037,stroke-width:1.5px
+    classDef llm       fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c,stroke-width:1.5px
+    classDef validate  fill:#ffe0b2,stroke:#e65100,color:#bf360c,stroke-width:1.5px
+    classDef persist   fill:#c8e6c9,stroke:#1b5e20,color:#1b5e20,stroke-width:1.5px
+    classDef external  fill:#fce4ec,stroke:#ad1457,color:#880e4f,stroke-width:1.5px
+    classDef uc        fill:#e0f7fa,stroke:#00695c,color:#004d40,stroke-width:1.5px
+
+    USER([User browser]):::user
+
+    subgraph APP["Databricks App"]
+        direction TB
+        UI["React UI<br/>(static)"]:::app
+        API["FastAPI routes<br/>/api/runs · /api/catalogs<br/>/api/proposals/:id/decision<br/>/api/findings/refresh"]:::app
+
+        subgraph PIPELINE["Agent runner pipeline (one trace per run)"]
+            direction TB
+            STEP1["1. Discover<br/>list_tables · get_table_schema<br/>query_constraints · query_lineage"]:::discovery
+            STEP2["2. Profile<br/>profile_column"]:::profile
+            STEP3["3. Ask Genie<br/>NL question → candidate SQL"]:::llm
+            STEP4["4. Dry-run<br/>validate (violations, sample_ids)"]:::validate
+            STEP5["5. Propose<br/>insert Proposal row"]:::persist
+            STEP1 --> STEP2 --> STEP3 --> STEP4 --> STEP5
+        end
+    end
+
+    subgraph EXT["External Databricks services"]
+        direction TB
+        WH[("SQL Warehouse")]:::external
+        GENIE[("Genie Space<br/>optional")]:::external
+        ALERTS[("DBSQL Alerts API<br/>v2")]:::external
+    end
+
+    subgraph UCAT["Unity Catalog state schema"]
+        direction TB
+        STATE[("proposal_run · proposal<br/>acceptance · dq_finding")]:::uc
+        TRACES[("agent_trace_otel_*<br/>(MLflow tracing)")]:::uc
+    end
+
+    USER -->|HTTP| UI
+    UI -->|REST| API
+    API -->|start run| PIPELINE
+
+    %% Pipeline calls out to services
+    STEP1 -->|read UC metadata| WH
+    STEP2 -->|sample rows| WH
+    STEP3 -.->|NL prompt| GENIE
+    GENIE -.->|generated SQL| STEP3
+    STEP4 -->|execute candidate| WH
+    STEP5 -->|INSERT| STATE
+    PIPELINE -.->|OTEL spans| TRACES
+
+    %% Accept flow
+    API ==>|approve| ALERTS
+    ALERTS ==>|alert_id| API
+    API ==>|INSERT acceptance + initial dq_finding| STATE
+
+    %% Routes also read/write state directly
+    API -. reads/writes .- STATE

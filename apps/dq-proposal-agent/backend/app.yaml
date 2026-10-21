@@ -1,0 +1,38 @@
+command:
+  - "python"
+  - "-m"
+  - "uvicorn"
+  - "src.main:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+env:
+  # Replace every <placeholder> below before deploying (README → Configure for
+  # your workspace). Deploying with the bundle sets these from databricks.yml
+  # variables instead. Leave DQ_GENIE_SPACE_ID empty to use the SQL templates.
+  - name: DQ_APP_CATALOG
+    value: "<app-catalog>"
+  - name: DQ_APP_SCHEMA
+    value: "<app-schema>"
+  - name: DQ_DATABRICKS_WAREHOUSE_ID
+    valueFrom: "warehouse"
+  # "obo" = act as the signed-in user (needs user-authorization scopes on the
+  # app); "sp" = always act as the app service principal. See docs/AUTHORIZATION.md.
+  - name: DQ_AUTH_MODE
+    value: "obo"
+  - name: DQ_GENIE_SPACE_ID
+    value: "<genie-space-id>"
+  - name: DQ_DEFAULT_ALERT_SUBSCRIBERS
+    value: "<alert-subscriber-email>"
+  - name: DQ_ALERT_PARENT_PATH
+    value: "/Workspace/Users/<app-sp-client-id>"
+  - name: DQ_MLFLOW_EXPERIMENT_NAME
+    value: "/Users/<app-sp-client-id>/dq-proposal-agent-traces"
+  - name: DQ_MLFLOW_TRACE_TABLE_PREFIX
+    value: "agent_trace"
+
+# The SQL warehouse behind `valueFrom: "warehouse"` is bound on the app itself
+# (UI: Apps -> Edit -> App resources, key `warehouse`; or `databricks apps update`,
+# see README). app.yaml only supports `command` and `env`.

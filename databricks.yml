@@ -1,94 +1,87 @@
 bundle:
-  name: demo_workflow
+  name: agentic-data-consistency
 
 variables:
-  # Project name - replace with your solution accelerator name
   project_name:
-    description: "Name of your solution accelerator"
-    default: "my-solution-accelerator"
-    
-  # The "warehouse_id" variable is used to reference the warehouse used by the dashboard.
+    description: "Name of the solution accelerator"
+    default: "agentic-data-consistency"
+
+  # The SQL warehouse the app queries through and the dashboard runs on.
   warehouse_id:
     lookup:
       # Replace this with the name of your SQL warehouse.
       warehouse: "Shared Unity Catalog Serverless"
-      
-  # Environment variable used for deployment paths
+
+  # Deployment environment used in workspace paths
   environment:
     description: "Deployment environment (dev, staging, prod)"
     default: "dev"
+
+  # Must match DQ_APP_CATALOG / DQ_APP_SCHEMA in apps/dq-proposal-agent/backend/app.yaml.
+  app_catalog:
+    description: "Catalog that holds the app's state schema (must already exist)"
+    default: "main"
+  app_schema:
+    description: "Schema for the app's state tables, reports volume and traces"
+    default: "dq_app"
+
+  # Optional: the schema you want the agent to scan. The setup job grants the
+  # app's service principal read access on it (needed when DQ_AUTH_MODE=sp).
+  target_catalog:
+    description: "Catalog of the schema to scan (optional)"
+    default: ""
+  target_schema:
+    description: "Schema to scan (optional)"
+    default: ""
+
+# backend/static/ (the built frontend, see scripts/build_frontend.sh) is
+# gitignored, so it has to be included explicitly.
+sync:
+  include:
+    - apps/dq-proposal-agent/backend/static/**
 
 targets:
   dev:
     default: true
     mode: development
 
-# Customize the resources below based on your solution accelerator needs
 resources:
-  # Uncomment and customize if you have Databricks Apps
-  # apps:
-  #   your_app:
-  #     name: "your-app-name"
-  #     description: "Your app description"
-  #     source_code_path: "/Users/${workspace.current_user.userName}/${var.project_name}-${var.environment}/files/apps/your_app"
+  apps:
+    dq_proposal_agent:
+      name: "dq-proposal-agent"
+      description: "Proposes data-quality checks for a Unity Catalog schema and turns approvals into DBSQL Alerts"
+      # Runtime settings come from app.yaml in this folder.
+      source_code_path: ./apps/dq-proposal-agent/backend
+      resources:
+        - name: warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
+      # For OBO mode (DQ_AUTH_MODE=obo), add user-authorization scopes. See docs/AUTHORIZATION.md.
+      # user_api_scopes:
+      #   - sql
+      #   - genie
 
-  # Uncomment and customize if you have dashboards
-  # dashboards:
-  #   your_dashboard:
-  #     display_name: "Your Dashboard"
-  #     file_path: "./dashboards/your_dashboard.lvdash.json"
-  #     warehouse_id: "${var.warehouse_id}"
+  dashboards:
+    dq_findings:
+      display_name: "DQ Findings – Proposals & Issues"
+      file_path: ./dashboards/dq_findings.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: ${var.app_catalog}
+      dataset_schema: ${var.app_schema}
 
-  # Example job workflow - customize based on your notebooks
   jobs:
-    example_workflow:
-      name: "${var.project_name} - Example Workflow"
+    setup:
+      name: "${var.project_name} - Setup"
       tasks:
-        - task_key: example_notebook
+        - task_key: setup_grants
           notebook_task:
-            notebook_path: "./notebooks/example_notebook.ipynb"
-        - task_key: example_databricks_notebook
-          depends_on:
-            - task_key: example_notebook
-          notebook_task:
-            notebook_path: "./notebooks/example_databricks_notebook.py"
-
-# Example resources you can uncomment and customize:
-# resources:
-#   apps:
-#     your_app:
-#       name: "your-app-name"
-#       description: "Your app description"
-#       source_code_path: "./apps/your_app"
-#
-#   jobs:
-#     your_workflow:
-#       name: "Your Workflow Name"
-#       tasks:
-#         - task_key: first_task
-#           notebook_task:
-#             notebook_path: "./notebooks/your_first_notebook.ipynb"
-#         - task_key: second_task
-#           depends_on:
-#             - task_key: first_task
-#           notebook_task:
-#             notebook_path: "./notebooks/your_second_notebook.ipynb"
-#
-#   pipelines:
-#     your_pipeline:
-#       name: "Your Pipeline"
-#       storage: "/Shared/your-pipeline"
-#       configuration:
-#         your_config: "value"
-#
-#   models:
-#     your_model:
-#       name: "Your Model"
-#       model_path: "models/your_model"
-#
-#   dashboards:
-#     your_dashboard:
-#       display_name: "Your Dashboard"
-#       file_path: "./dashboards/your_dashboard.lvdash.json"
+            notebook_path: ./notebooks/01_setup_grants.py
+            base_parameters:
+              app_name: ${resources.apps.dq_proposal_agent.name}
+              app_catalog: ${var.app_catalog}
+              app_schema: ${var.app_schema}
+              target_catalog: ${var.target_catalog}
+              target_schema: ${var.target_schema}
 
 # For more options and schema, see: https://docs.databricks.com/aws/en/dev-tools/bundles/settings
